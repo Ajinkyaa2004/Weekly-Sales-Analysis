@@ -51,6 +51,18 @@ uploaded_wa = st.sidebar.file_uploader("WA Branch CSV", type=['csv'], key='wa')
 
 st.sidebar.markdown("---")
 
+# Historical Data Upload
+st.sidebar.title("📊 Upload Historical Sales Data")
+st.sidebar.markdown("Upload Excel file for annual sales analysis:")
+uploaded_historical = st.sidebar.file_uploader(
+    "Historical Sales Excel (with WA, QLD, NSW sheets)", 
+    type=['xlsx', 'xls'], 
+    key='historical',
+    help="Upload an Excel file containing sheets named 'WA', 'QLD', and 'NSW' with historical sales data"
+)
+
+st.sidebar.markdown("---")
+
 # Check if all files are uploaded
 all_files_uploaded = uploaded_nsw is not None and uploaded_qld is not None and uploaded_wa is not None
 
@@ -61,10 +73,14 @@ else:
     df = None
 
 @st.cache_data
-def load_historical_sales_data():
+def load_historical_sales_data(excel_file=None):
     """Loads and preprocesses the historical weekly sales data from Excel sheets,
     handling the two-row header structure and selecting relevant columns."""
-    excel_file_path = 'HISTORICAL_REPORT.xlsx' # This is now the single Excel file
+    if excel_file is None:
+        excel_file_path = 'HISTORICAL_REPORT.xlsx' # Fallback to default file
+    else:
+        excel_file_path = excel_file
+    
     sheet_names = ['WA', 'QLD', 'NSW'] # These are the sheet names within the Excel file
 
     all_historical_df = []
@@ -128,7 +144,14 @@ def load_historical_sales_data():
 # Main app - only runs if files are uploaded
 if all_files_uploaded:
     # Load historical dataframes
-    historical_df = load_historical_sales_data()
+    if uploaded_historical is not None:
+        historical_df = load_historical_sales_data(uploaded_historical)
+    else:
+        # Try to load from default file if it exists
+        try:
+            historical_df = load_historical_sales_data()
+        except:
+            historical_df = pd.DataFrame()
 
     st.title("▸ Invoice & Customer Analysis Dashboard")
 
@@ -165,7 +188,7 @@ if all_files_uploaded:
             historical_df['Financial Year'].isin(selected_financial_years)
         ].copy() # Ensure filtered_historical_df is a copy
     else:
-        st.info("Historical sales data not loaded. Week-wise analysis will be empty.")
+        st.info("📁 Historical sales data not loaded. Upload an Excel file in the sidebar for Annual Sales Analysis.")
         filtered_historical_df = pd.DataFrame()
 
 
@@ -231,9 +254,143 @@ if all_files_uploaded:
 
     # st.plotly_chart(fig, use_container_width=True)
 
-    # --- Week-wise Sales Analysis (Uses Historical Data) ---
-    st.header("▸ Annual Sales Analysis")
+    # --- Annual Sales Analysis Dashboard ---
+    st.header("📊 Annual Sales Analysis Dashboard")
 
+    if not filtered_historical_df.empty:
+        # Create tabs for better organization
+        tab1, tab2, tab3, tab4 = st.tabs(["📈 Overview", "📊 Quarter Analysis", "📅 Week Analysis", "📉 Comparative Analysis"])
+        
+        with tab1:
+            st.subheader("Annual Sales Overview")
+            
+            # Key metrics in columns
+            col1, col2, col3, col4 = st.columns(4)
+            
+            total_sales = filtered_historical_df['Total'].sum()
+            avg_weekly_sales = filtered_historical_df['Total'].mean()
+            total_weeks = filtered_historical_df['Week'].nunique()
+            total_years = filtered_historical_df['Financial Year'].nunique()
+            
+            with col1:
+                st.metric("Total Sales", f"${total_sales:,.2f}")
+            with col2:
+                st.metric("Avg Weekly Sales", f"${avg_weekly_sales:,.2f}")
+            with col3:
+                st.metric("Total Weeks", total_weeks)
+            with col4:
+                st.metric("Financial Years", total_years)
+            
+            st.markdown("---")
+            
+            # Financial Year Total Sales Comparison
+            st.subheader("Financial Year Total Sales Comparison")
+            annual_historical_sales = filtered_historical_df.groupby(['Financial Year', 'Branch'])['Total'].sum().reset_index()
+            
+            if not annual_historical_sales.empty:
+                # Create pivot table for display
+                pivot_annual = annual_historical_sales.pivot(index='Financial Year', columns='Branch', values='Total').fillna(0)
+                pivot_annual['Total'] = pivot_annual.sum(axis=1)
+                
+                # Format as currency
+                st.dataframe(
+                    pivot_annual.style.format("${:,.2f}"),
+                    use_container_width=True
+                )
+                
+                # Bar chart
+                fig_annual_hist = px.bar(
+                    annual_historical_sales,
+                    x='Financial Year',
+                    y='Total',
+                    color='Branch',
+                    barmode='group',
+                    title='Total Sales per Financial Year by Branch',
+                    text_auto='.2s',
+                    hover_data={'Total': ':,.2f', 'Branch': True, 'Financial Year': True}
+                )
+                fig_annual_hist.update_layout(
+                    xaxis_title='Financial Year',
+                    yaxis_title='Total Sales ($)',
+                    hovermode='x unified',
+                    height=500
+                )
+                st.plotly_chart(fig_annual_hist, use_container_width=True)
+                
+                # Year-over-Year Growth Analysis
+                st.subheader("Year-over-Year Growth Analysis")
+                yoy_growth = annual_historical_sales.pivot(index='Financial Year', columns='Branch', values='Total')
+                yoy_growth_pct = yoy_growth.pct_change() * 100
+                
+                if len(yoy_growth_pct) > 1:
+                    st.dataframe(
+                        yoy_growth_pct.style.format("{:.2f}%").highlight_max(axis=0, color='lightgreen').highlight_min(axis=0, color='lightcoral'),
+                        use_container_width=True
+                    )
+            
+            # Branch comparison
+            st.subheader("Branch Performance Comparison")
+            branch_totals = filtered_historical_df.groupby('Branch')['Total'].sum().reset_index()
+            fig_branch_pie = px.pie(
+                branch_totals,
+                values='Total',
+                names='Branch',
+                title='Sales Distribution by Branch',
+                hole=0.4,
+                hover_data={'Total': ':,.2f'}
+            )
+            fig_branch_pie.update_traces(textposition='inside', textinfo='percent+label')
+            st.plotly_chart(fig_branch_pie, use_container_width=True)
+        
+        with tab2:
+            st.subheader("Quarter Analysis")
+            
+            # Add Quarter column to dataframe
+            def get_quarter(week):
+                if 1 <= week <= 13:
+                    return 'Q1'
+                elif 14 <= week <= 26:
+                    return 'Q2'
+                elif 27 <= week <= 39:
+                    return 'Q3'
+                else:
+                    return 'Q4'
+            
+            quarter_df = filtered_historical_df.copy()
+            quarter_df['Quarter'] = quarter_df['Week'].apply(get_quarter)
+            
+            # Quarter summary table
+            quarter_summary = quarter_df.groupby(['Financial Year', 'Quarter', 'Branch'])['Total'].sum().reset_index()
+            quarter_pivot = quarter_summary.pivot_table(
+                index=['Financial Year', 'Quarter'], 
+                columns='Branch', 
+                values='Total', 
+                fill_value=0
+            )
+            quarter_pivot['Total'] = quarter_pivot.sum(axis=1)
+            
+            st.dataframe(
+                quarter_pivot.style.format("${:,.2f}"),
+                use_container_width=True
+            )
+            
+            # Quarter comparison chart
+            fig_quarter = px.bar(
+                quarter_summary,
+                x='Quarter',
+                y='Total',
+                color='Branch',
+                facet_col='Financial Year',
+                barmode='group',
+                title='Quarterly Sales Comparison Across Years',
+                text_auto='.2s'
+            )
+            fig_quarter.update_layout(height=400)
+            st.plotly_chart(fig_quarter, use_container_width=True)
+        
+        with tab3:
+            st.subheader("Week-wise Analysis")
+            
     if not filtered_historical_df.empty:
         # --- 2. Enhanced Quarter/Week Range Analysis ---
         st.subheader("Quarter/Week Range Analysis")
@@ -300,28 +457,102 @@ if all_files_uploaded:
 
         st.markdown("---") # Separator
 
-        # 2. User can compare the total sale of the whole financial year using bar chart.
-        st.subheader("Financial Year Total Sales Comparison")
-        annual_historical_sales = filtered_historical_df.groupby(['Financial Year', 'Branch'])['Total'].sum().reset_index()
-        if not annual_historical_sales.empty:
-            fig_annual_hist = px.bar(
-                annual_historical_sales,
-                x='Financial Year',
-                y='Total',
-                color='Branch',
-                barmode='group',
-                title='Total Sales per Financial Year by Branch',
-                text_auto=True,
-                hover_data={'Total': ':.2f', 'Branch': True, 'Financial Year': True}
-            )
-            fig_annual_hist.update_layout(
-                xaxis_title='Financial Year',
-                yaxis_title='Total Sales',
-                hovermode='x unified'
-            )
-            st.plotly_chart(fig_annual_hist, use_container_width=True)
-        else:
-            st.info("No annual historical sales data available for comparison.")
+        with tab4:
+            st.subheader("Comparative Analysis")
+            
+            # Compare selected years
+            available_years = sorted(filtered_historical_df['Financial Year'].unique())
+            
+            if len(available_years) >= 2:
+                col1, col2 = st.columns(2)
+                with col1:
+                    compare_year_1 = st.selectbox("Select First Year", available_years, index=0, key='year1')
+                with col2:
+                    compare_year_2 = st.selectbox("Select Second Year", available_years, index=min(1, len(available_years)-1), key='year2')
+                
+                if compare_year_1 != compare_year_2:
+                    year1_data = filtered_historical_df[filtered_historical_df['Financial Year'] == compare_year_1]
+                    year2_data = filtered_historical_df[filtered_historical_df['Financial Year'] == compare_year_2]
+                    
+                    # Summary comparison
+                    col1, col2, col3 = st.columns(3)
+                    
+                    year1_total = year1_data['Total'].sum()
+                    year2_total = year2_data['Total'].sum()
+                    difference = year2_total - year1_total
+                    pct_change = (difference / year1_total * 100) if year1_total > 0 else 0
+                    
+                    with col1:
+                        st.metric(f"{compare_year_1} Total", f"${year1_total:,.2f}")
+                    with col2:
+                        st.metric(f"{compare_year_2} Total", f"${year2_total:,.2f}")
+                    with col3:
+                        st.metric("Change", f"${difference:,.2f}", f"{pct_change:+.2f}%")
+                    
+                    # Week-by-week comparison
+                    st.subheader(f"Week-by-Week Comparison: {compare_year_1} vs {compare_year_2}")
+                    
+                    comparison_df = pd.merge(
+                        year1_data.groupby(['Week', 'Branch'])['Total'].sum().reset_index().rename(columns={'Total': f'{compare_year_1}'}),
+                        year2_data.groupby(['Week', 'Branch'])['Total'].sum().reset_index().rename(columns={'Total': f'{compare_year_2}'}),
+                        on=['Week', 'Branch'],
+                        how='outer'
+                    ).fillna(0)
+                    
+                    comparison_df['Difference'] = comparison_df[f'{compare_year_2}'] - comparison_df[f'{compare_year_1}']
+                    comparison_df['% Change'] = comparison_df.apply(
+                        lambda row: (row['Difference'] / row[f'{compare_year_1}'] * 100) if row[f'{compare_year_1}'] > 0 else 0,
+                        axis=1
+                    )
+                    
+                    # Line chart comparison
+                    fig_comparison = px.line(
+                        comparison_df.melt(id_vars=['Week', 'Branch'], value_vars=[f'{compare_year_1}', f'{compare_year_2}'], 
+                                          var_name='Year', value_name='Total'),
+                        x='Week',
+                        y='Total',
+                        color='Branch',
+                        line_dash='Year',
+                        markers=True,
+                        title=f'Sales Comparison: {compare_year_1} vs {compare_year_2}',
+                        hover_data={'Total': ':,.2f'}
+                    )
+                    fig_comparison.update_layout(
+                        xaxis_title='Week Number',
+                        yaxis_title='Total Sales ($)',
+                        hovermode='x unified',
+                        height=500
+                    )
+                    st.plotly_chart(fig_comparison, use_container_width=True)
+                    
+                    # Show detailed comparison table
+                    with st.expander("View Detailed Comparison Table"):
+                        st.dataframe(
+                            comparison_df.style.format({
+                                f'{compare_year_1}': '${:,.2f}',
+                                f'{compare_year_2}': '${:,.2f}',
+                                'Difference': '${:,.2f}',
+                                '% Change': '{:+.2f}%'
+                            }),
+                            use_container_width=True
+                        )
+                else:
+                    st.warning("Please select two different years for comparison.")
+            else:
+                st.info("Need at least 2 financial years for comparative analysis.")
+    else:
+        # Show message when no historical data is available
+        st.info("""
+        📁 **No Historical Sales Data Available**
+        
+        Upload an Excel file in the sidebar (under 'Upload Historical Sales Data') to view:
+        - Annual sales overview with key metrics
+        - Quarter-by-quarter analysis
+        - Week-by-week sales trends
+        - Year-over-year comparative analysis
+        
+        Your Excel file should contain sheets named 'WA', 'QLD', and 'NSW' with historical sales data.
+        """)
 
     # ---- Monthly Sales ---- #
     # ---- Monthly Sales ---- #

@@ -10,11 +10,18 @@ An interactive Streamlit dashboard for analyzing sales data across multiple bran
 ## 🚀 Features
 
 - **📤 Easy File Upload**: Upload CSV files for each branch through the sidebar
-- **📈 Annual Sales Analysis**: Quarterly and weekly sales trends with historical data comparison
-- **📅 Monthly Sales Tracking**: Visual representation of monthly sales by branch
+- **� Annual Sales Analysis Dashboard**: 
+  - Upload historical sales data (Excel format)
+  - View comprehensive annual sales overview with key metrics
+  - Quarter-by-quarter analysis across multiple years
+  - Week-by-week sales trends
+  - Year-over-year comparative analysis
+  - Branch performance comparison
+- **📈 Weekly Sales Tracking**: Quarterly and weekly sales trends with historical data comparison
+- **📅 Monthly Sales Analysis**: Visual representation of monthly sales by branch
 - **🔍 Customer Trend Analysis**: Identify rising and dropping customers year-over-year
 - **🧾 Customer Purchase Details**: Deep dive into individual customer purchase patterns
-- **🎛️ Interactive Filters**: Filter by branch, customer, date range, and year
+- **🎛️ Interactive Filters**: Filter by branch, customer, date range, financial year, and more
 - **📊 Rich Visualizations**: Interactive charts powered by Plotly
 
 ## 📋 Requirements
@@ -77,6 +84,29 @@ Your CSV files should contain the following columns:
 - Status
 
 **Note**: The first row should contain your data (no header row in CSV). The app will assign column names automatically.
+
+## 📈 Historical Sales Data Format (Excel)
+
+For the Annual Sales Analysis Dashboard, upload an Excel file (.xlsx or .xls) with the following structure:
+
+### Required Sheets
+- **WA** (Western Australia)
+- **QLD** (Queensland)  
+- **NSW** (New South Wales)
+
+### Sheet Structure
+- **Row 1**: Financial year headers (e.g., '18/19', '19/20', '20/21')
+- **Row 2**: Optional sub-headers
+- **Row 3+**: Weekly sales data (Week 1, Week 2, ..., Week 52)
+
+**Example Structure:**
+| Week No | 18/19   | 19/20   | 20/21   |
+|---------|---------|---------|---------|
+| Week 1  | 125,000 | 130,000 | 145,000 |
+| Week 2  | 128,000 | 132,000 | 148,000 |
+| ...     | ...     | ...     | ...     |
+
+📖 **For detailed format specifications, see [HISTORICAL_DATA_FORMAT.md](HISTORICAL_DATA_FORMAT.md)**
 
 ## 🌐 Deployment
 
