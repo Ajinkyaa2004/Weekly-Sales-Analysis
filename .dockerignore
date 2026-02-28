@@ -27,9 +27,6 @@ ENV/
 *.swo
 *~
 .DS_Store
-*.csv
-*.xlsx
-*.xls
 README.md
 .gitignore
 .devcontainer
