@@ -42,7 +42,7 @@ def load_data(nsw_file, qld_file, wa_file):
     return df.dropna(subset=['Issue Date', 'Total', 'Branch'])
 
 # File upload UI in sidebar
-st.sidebar.title("📤 Upload Sales Data")
+st.sidebar.title("⬆ Upload Sales Data")
 st.sidebar.markdown("Upload CSV files for each branch:")
 
 uploaded_nsw = st.sidebar.file_uploader("NSW Branch CSV", type=['csv'], key='nsw')
@@ -57,7 +57,7 @@ all_files_uploaded = uploaded_nsw is not None and uploaded_qld is not None and u
 if all_files_uploaded:
     df = load_data(uploaded_nsw, uploaded_qld, uploaded_wa)
 else:
-    st.sidebar.warning("⚠️ Please upload all 3 CSV files to proceed")
+    st.sidebar.warning("⚠ Please upload all 3 CSV files to proceed")
     df = None
 
 @st.cache_data
@@ -130,7 +130,7 @@ if all_files_uploaded:
     # Load historical dataframes
     historical_df = load_historical_sales_data()
 
-    st.title("📊 Invoice & Customer Analysis Dashboard")
+    st.title("▸ Invoice & Customer Analysis Dashboard")
 
     # ---- Filters ---- #
     branch_options = df['Branch'].dropna().unique().tolist()
@@ -232,7 +232,7 @@ if all_files_uploaded:
     # st.plotly_chart(fig, use_container_width=True)
 
     # --- Week-wise Sales Analysis (Uses Historical Data) ---
-    st.header("📅 Annual Sales Analysis")
+    st.header("▸ Annual Sales Analysis")
 
     if not filtered_historical_df.empty:
         # --- 2. Enhanced Quarter/Week Range Analysis ---
@@ -325,7 +325,7 @@ if all_files_uploaded:
 
     # ---- Monthly Sales ---- #
     # ---- Monthly Sales ---- #
-    st.header("📅 Monthly Branch Sales")
+    st.header("▸ Monthly Branch Sales")
     monthly_sales = filtered_df.groupby(['Month', 'Branch'])['Total'].sum().reset_index()
 
     fig_month = px.line(
@@ -363,7 +363,7 @@ if all_files_uploaded:
         st.info("Not enough years for drop/rise analysis.")
 
     # ---- Customer Purchase View ---- #
-    st.header("🧾 Customer-wise Purchase Detail")
+    st.header("▸ Customer-wise Purchase Detail")
 
     # Multiselect Customer
     cust_df = filtered_df.groupby(['Customer', 'Year'])['Total'].sum().reset_index()
@@ -407,7 +407,7 @@ if all_files_uploaded:
         st.metric(label="Total Purchase for Filtered Records", value=f"${total_filtered_purchase:,.2f}")
 
         # Year-wise Total Purchases (Bar Chart)
-        st.subheader("📊 Year-wise Purchase Totals")
+        st.subheader("▸ Year-wise Purchase Totals")
         cust_yearly = cust_purchase.groupby(['Customer', 'Year'])['Total'].sum().reset_index()
 
         if not cust_yearly.empty:
@@ -422,7 +422,7 @@ if all_files_uploaded:
             st.info("No yearly data available for selected customers/date range.")
 
         # Monthly Trend (Line Chart)
-        st.subheader("📈 Monthly Purchase Trend")
+        st.subheader("▸ Monthly Purchase Trend")
         cust_purchase['Month'] = cust_purchase['Issue Date'].dt.to_period('M').astype(str)
         cust_monthly = cust_purchase.groupby(['Customer', 'Month'])['Total'].sum().reset_index()
 
@@ -442,11 +442,11 @@ if all_files_uploaded:
 
 else:
     # Show welcome message when no files are uploaded
-    st.title("📊 Invoice & Customer Analysis Dashboard")
-    st.info("👆 Please upload CSV files for all three branches (NSW, QLD, WA) using the sidebar to begin analysis.")
+    st.title("▸ Invoice & Customer Analysis Dashboard")
+    st.info("↑ Please upload CSV files for all three branches (NSW, QLD, WA) using the sidebar to begin analysis.")
     
     st.markdown("""
-    ### 📋 Instructions:
+    ### ▸ Instructions:
     1. Use the sidebar on the left to upload your CSV files
     2. Upload one file for each branch: NSW, QLD, and WA
     3. Ensure your CSV files have the same structure with these columns:
@@ -455,7 +455,7 @@ else:
          Invoice ID, Invoice #, Issue Date, Total, Outstanding, Delivery, Status
     4. Once all files are uploaded, the dashboard will automatically display your analysis
     
-    ### 📊 Available Visualizations:
+    ### ▸ Available Visualizations:
     - Annual and Monthly Sales Analysis
     - Customer Trend Analysis (Rising vs Dropping Customers)
     - Customer-wise Purchase Details
